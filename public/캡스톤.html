@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weapon Challenger | WebGL Demo</title>
+  <style>
+    /* ===== 색상, 글꼴, 둥근 모서리 등 공통 변수 ===== */
+    :root{
+      --bg:#0f1220; --card:#181c2f; --soft:#242a43; --text:#eef1ff; --muted:#b8c0ff; --accent:#7aa2ff;
+      --ok:#44d19f; --warn:#ffd166;
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, AppleSDGothicNeo, 'Segoe UI', Pretendard, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: linear-gradient(180deg,#0c1023 0%, #0f1220 40%, #0f1220 100%);
+  padding-top: 60px; /* 배너 높이에 맞게 조정 (여기선 60px) */
+}
+
+    /* ===== 상단 배너 영역 ===== */
+    header {
+  position: fixed; /* 스크롤해도 고정 */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  backdrop-filter: saturate(140%) blur(8px);
+  background: rgba(15, 18, 32, .7);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+    }
+    .banner{
+      max-width:1200px; margin:0 auto; padding:14px 18px; display:flex; align-items:center; gap:18px;
+    }
+    .logo{
+      display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.3px;
+    }
+    .logo i{
+      width:28px; height:28px; border-radius:8px; display:inline-block;
+      background:linear-gradient(135deg,#6ea8ff,#9a7bff);
+      box-shadow:0 6px 18px rgba(122,162,255,.35);
+    }
+    nav{margin-left:auto}
+    nav a{
+      color:var(--text); text-decoration:none; font-weight:600; padding:10px 12px; border-radius:12px;
+      transition:.2s ease;
+    }
+    nav a:hover, nav a:focus{ background:rgba(255,255,255,.08); outline:none }
+    nav a.active{ color:#fff; background:linear-gradient(135deg,#6ea8ff,#7aa2ff) }
+
+    /* ===== 페이지 전체 컨테이너 ===== */
+    .wrap{ max-width:1500px; margin:28px auto 80px; padding:0 18px }
+    .section-title{ font-size:28px; margin:22px 0 14px }
+    .muted{ color:var(--muted) }
+
+    /* ===== 게임 프레임 영역 ===== */
+    .game-card{
+      background:var(--card); border-radius:var(--radius); box-shadow:0 20px 50px rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.06); padding:16px;
+    }
+    .frame{
+      background:var(--soft);
+      border-radius:14px;
+      border:2px solid rgba(255,255,255,.08);
+      padding:0; overflow:hidden;
+    }
+    /* 16:9 비율 스테이지 영역 */
+    .stage{
+      position:relative; width:100%; aspect-ratio:16/9;
+      background:radial-gradient(1200px 400px at 50% -200px, rgba(122,162,255,.15), transparent 60%);
+    }
+    .stage iframe{
+      position:absolute; inset:0; width:100%; height:100%; border:0;
+      background:#000;
+    }
+
+    /* ===== 게임 정보 카드 레이아웃 ===== */
+    .cards{
+      margin-top:22px;
+      display:grid; grid-template-columns:repeat(12,1fr); gap:18px;
+    }
+    .card{
+      background:var(--card); border-radius:16px; padding:18px;
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .card h3{ margin:0 0 10px }
+    .card ul{ margin:8px 0 0 18px }
+    .grid-12{ grid-column:span 12 }
+    .grid-6{ grid-column:span 6 }
+    .grid-4{ grid-column:span 4 }
+    .grid-8{ grid-column:span 8 }
+    @media (max-width:960px){
+      .grid-6,.grid-4{ grid-column:span 12 }
+    }
+
+    /* ===== 테이블 스타일 ===== */
+    table{
+      width:100%; border-collapse:collapse; font-size:14.5px; overflow:hidden; border-radius:12px;
+      border:1px solid rgba(255,255,255,.06);
+    }
+    thead th{
+      background:linear-gradient(180deg,rgba(122,162,255,.22),rgba(122,162,255,.08));
+      color:#fff; text-align:left; padding:12px; font-weight:700;
+    }
+    tbody td{ padding:10px 12px; border-top:1px solid rgba(255,255,255,.06) }
+    tbody tr:nth-child(even){ background:rgba(255,255,255,.03) }
+
+    /* ===== 푸터와 댓글 영역 ===== */
+    footer{
+      margin-top:34px; padding:28px 0 60px; border-top:1px solid rgba(255,255,255,.08)
+    }
+    .comment-box{
+      background:var(--card); border:1px solid rgba(255,255,255,.06);
+      border-radius:16px; padding:16px;
+    }
+    .comment-box form{ display:grid; gap:10px; margin-bottom:16px }
+    .comment-box input,.comment-box textarea{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12);
+      background:var(--soft); color:var(--text)
+    }
+    .comment-box button{
+      justify-self:end; padding:10px 16px; border-radius:12px; border:0; cursor:pointer;
+      color:#0c1023; font-weight:800; background:linear-gradient(135deg,#7aa2ff,#9a7bff);
+      box-shadow:0 8px 20px rgba(122,162,255,.35);
+    }
+    .comment{
+      display:flex; gap:12px; padding:12px; border-radius:12px;
+      background:rgba(255,255,255,.03); margin-top:10px; border:1px solid rgba(255,255,255,.05);
+    }
+    .avatar{ width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#7aa2ff,#44d19f) }
+    .comment .meta{ font-size:12px; color:var(--muted) }
+    .kbd{ display:inline-block; padding:2px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.2); font-family:monospace; background:rgba(255,255,255,.06) }
+	
+  </style>
+<script>
+ function submitClick() {
+	 alert("댓글이 저장되었습니다");
+}
+</script>
+</head>
+<body>
+
+  <!-- ===== 상단 메뉴 영역 ===== -->
+  <header>
+    <div class="banner">
+      <div class="logo" aria-label="Weapon Challenger">
+        <i></i><span>Weapon&nbsp;Challenger</span>
+      </div>
+      <nav aria-label="주요 메뉴">
+        <a href="#about" id="nav-about">게임설명</a>
+        <a href="#game" id="nav-game">웨폰첼린저 게임</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ===== 게임 실행 영역 ===== -->
+    <section id="game">
+      <h2 class="section-title">웨폰첼린저 게임</h2>
+      <p class="muted">아래 프레임에 Unity WebGL 빌드를 삽입해 실행합니다.</p>
+
+      <div class="game-card">
+        <div class="frame">
+          <div class="stage">
+            <!-- Unity WebGL 빌드 결과 index.html 경로를 여기에 설정 -->
+            <iframe src="https://www.youtube.com/watch?v=xfIuA8d6Zug" title="Weapon Challenger WebGL"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 게임 설명 영역 ===== -->
+    <section id="about" style="margin-top:28px">
+      <h2 class="section-title">게임설명</h2>
+
+      <div class="cards">
+        <!-- 조작키 -->
+        <article class="card grid-4">
+          <h3>조작키</h3>
+          <ul>
+            <li><span class="kbd">W</span> / <span class="kbd">Space</span> : 점프</li>
+            <li><span class="kbd">A</span> / <span class="kbd">D</span> : 좌우 이동</li>
+            <li><span class="kbd">J</span> : 기본 공격</li>
+            <li><span class="kbd">K</span> : 무기 스킬</li>
+            <li><span class="kbd">1</span>–<span class="kbd">4</span> : 무기 변경</li>
+            <li><span class="kbd">Esc</span> : 일시정지/옵션</li>
+          </ul>
+        </article>
+
+        <!-- 보스 정보 -->
+        <article class="card grid-8">
+          <h3>보스 정보</h3>
+          <table>
+            <thead>	
+              <tr>
+                <th>보스명</th><th>체력</th><th>공격력</th><th>패턴/특징</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>스톤 골렘</td><td>3,000</td><td>120</td><td>광역 바위 투척, 착지 충격파</td></tr>
+              <tr><td>크림슨 드레이크</td><td>4,500</td><td>160</td><td>화염 브레스, 꼬리 휩쓸기</td></tr>
+              <tr><td>보이드 리치</td><td>6,000</td><td>220</td><td>순간이동+구체 소환</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <!-- 무기 정보 -->
+        <article class="card grid-6" id="weapon">
+          <h3>웨폰(무기) 정보</h3>
+          <table>
+            <thead>
+              <tr><th>무기명</th><th>공격력</th><th>특수효과</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>기본 권총</td><td>45</td><td>연사 안정적, 재장전 빠름</td></tr>
+              <tr><td>썬더 라이플</td><td>90</td><td>관통 2명, 감전 확률</td></tr>
+              <tr><td>아크 블레이드</td><td>120</td><td>근접 광역, 출혈 중첩</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <!-- 스테이지 정보 -->
+        <article class="card grid-6">
+          <h3>스테이지 정보</h3>
+          <table>
+            <thead>
+              <tr><th>스테이지</th><th>라운드수</th><th>환경/기믹</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>사막 협곡</td><td>5</td><td>모래폭풍, 발판 붕괴</td></tr>
+              <tr><td>부서진 성채</td><td>6</td><td>트랩 문, 원거리 궁수</td></tr>
+              <tr><td>공허의 균열</td><td>7</td><td>랜덤 포탈, 중력 변동</td></tr>
+            </tbody>
+          </table>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== 푸터 & 댓글 영역 ===== -->
+  <footer class="wrap">
+    <h2 class="section-title">댓글</h2>
+    <div class="comment-box" id="comments">
+      <form id="comment-form" autocomplete="off">
+        <input type="text" id="cname" placeholder="닉네임" required />
+        <textarea id="ctext" rows="4" placeholder="내용을 입력하세요" required></textarea>
+        <button type="submit" onclick = "submitClick()">댓글 등록</button>
+      </form>
+      <div id="comment-list"></div>
+    </div>
+    <p class="muted">※ 댓글은 브라우저 localStorage에 저장되는 데모 기능입니다.</p>
+  </footer>
+
+  <script>
+    /* ===== 스크롤 시 현재 화면 섹션에 맞는 메뉴를 강조 ===== */
+    const sections = [["weapon","#nav-weapon"],["about","#nav-about"],["game","#nav-game"]];
+    const links = sections.map(([id, sel]) => [document.getElementById(id), document.querySelector(sel)]);
+
+    const activate = sel => {
+      document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+      sel && sel.classList.add('active');
+    };
+
+    const onScroll = () => {
+      let current = null, fromTop = window.scrollY + 120;
+      for (const [sec, link] of links){
+        if (!sec) continue;
+        const top = sec.offsetTop, bottom = top + sec.offsetHeight;
+        if (fromTop >= top && fromTop < bottom) { current = link; break; }
+      }
+      activate(current);
+    };
+
+    document.addEventListener('scroll', onScroll, {passive:true});
+    onScroll();
+
+    /* ===== 댓글 기능(localStorage 저장) + 등록 시 프롬프트 출력 ===== */
+    const key = "wc.comments.v1";
+    const $list = document.getElementById('comment-list');
+    const $form = document.getElementById('comment-form');
+    const $name = document.getElementById('cname');
+    const $text = document.getElementById('ctext');
+
+    const load = () => { try{ return JSON.parse(localStorage.getItem(key) || "[]"); }catch(e){ return []; } }
+    const save = (arr) => localStorage.setItem(key, JSON.stringify(arr));
+    const fmt = (d) => new Date(d).toLocaleString();
+    const escapeHtml = (s) => s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+    const render = () => {
+      const arr = load();
+      $list.innerHTML = "";
+      if (!arr.length){ $list.innerHTML = '<p class="muted">첫 댓글을 남겨주세요.</p>'; return; }
+      arr.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'comment';
+        el.innerHTML = `<div class="avatar"></div>
+          <div>
+            <div class="meta">${escapeHtml(c.name)} · <span class="muted">${fmt(c.ts)}</span></div>
+            <div>${escapeHtml(c.text).replace(/\n/g,'<br>')}</div>
+          </div>`;
+        $list.appendChild(el);
+      });
+    };
+
+    // 폼 제출(댓글 등록) 시: 저장 → 렌더 → 알림창
+    $form.addEventListener('submit', (e)=>{
+      e.preventDefault(); // 새로고침 방지
+      const name = $name.value.trim(), text = $text.value.trim();
+      if (!name || !text) return;
+
+      const arr = load();
+      arr.unshift({name, text, ts: Date.now()});
+      save(arr);
+      render();
+      $text.value = "";
+    });
+
+    // 초기 렌더
+    render();
+  </script>
+</body>
+</html>
